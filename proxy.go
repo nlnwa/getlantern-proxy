@@ -103,11 +103,21 @@ type Opts struct {
 	// mitm'ed (e.g. Client Hello doesn't include an SNI header) or if the
 	// contents isn't HTTP, the connection is handled as normal without MITM.
 	MITMOpts *mitm.Opts
+
+	// InitMITM is an optional function to initialize the MITM interceptor
+	InitMITM func() (MITMInterceptor, error)
+
+	// NotifyDownstreamWritten is an optional function which is called immediately after response is written downstream
+	NotifyDownstreamWritten func(filters.Context, net.Conn, *http.Request, error)
+}
+
+type MITMInterceptor interface {
+	MITM(ctx context.Context, downstream net.Conn, upstream net.Conn) (newDown net.Conn, newUp net.Conn, success bool, err error)
 }
 
 type proxy struct {
 	*Opts
-	mitmIC      *mitm.Interceptor
+	mitmIC      MITMInterceptor
 	mitmDomains []*regexp.Regexp
 }
 
@@ -132,8 +142,8 @@ func New(opts *Opts) (newProxy Proxy, mitmErr error) {
 	p.applyHTTPDefaults()
 	p.applyCONNECTDefaults()
 
-	if opts.MITMOpts != nil {
-		p.mitmIC, mitmErr = mitm.Configure(opts.MITMOpts)
+	if opts.InitMITM != nil {
+		p.mitmIC, mitmErr = opts.InitMITM()
 		if mitmErr != nil {
 			mitmErr = errors.New("Unable to configure MITM: %v", mitmErr)
 		} else {

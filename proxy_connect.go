@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"github.com/getlantern/mitm"
 	"io"
 	"net"
 	"net/http"
@@ -38,6 +39,9 @@ func (proxy *proxy) applyCONNECTDefaults() {
 				return make([]byte, defaultBufferSize)
 			},
 		}}
+	}
+	if proxy.InitMITM == nil && proxy.MITMOpts != nil {
+		proxy.InitMITM = proxy.defaultInitMITM
 	}
 	if proxy.ShouldMITM == nil {
 		proxy.ShouldMITM = proxy.defaultShouldMITM
@@ -178,8 +182,9 @@ func (proxy *proxy) proceedWithConnect(ctx filters.Context, req *http.Request, u
 	var rr io.Reader
 	if proxy.ShouldMITM(req, upstreamAddr) {
 		// Try to MITM the connection
-		downstreamMITM, upstreamMITM, mitming, err := proxy.mitmIC.MITM(downstream, upstream)
+		downstreamMITM, upstreamMITM, mitming, err := proxy.mitmIC.MITM(ctx, downstream, upstream)
 		if err != nil {
+			fmt.Printf("MITM ERROR: %v, %v, %v, %v\n", downstreamMITM != nil, upstreamMITM != nil, mitming, err)
 			return log.Errorf("Unable to MITM connection: %v", err)
 		}
 		downstream = downstreamMITM
@@ -264,4 +269,17 @@ func (proxy *proxy) defaultShouldMITM(req *http.Request, upstreamAddr string) bo
 		}
 	}
 	return false
+}
+
+func (proxy *proxy) defaultInitMITM() (MITMInterceptor, error) {
+	i, e := mitm.Configure(proxy.MITMOpts)
+	return &defaultMITMInterceptor{i}, e
+}
+
+type defaultMITMInterceptor struct {
+	*mitm.Interceptor
+}
+
+func (i *defaultMITMInterceptor) MITM(ctx context.Context, downstream net.Conn, upstream net.Conn) (newDown net.Conn, newUp net.Conn, success bool, err error) {
+	return i.Interceptor.MITM(downstream, upstream)
 }

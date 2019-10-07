@@ -104,7 +104,10 @@ func (proxy *proxy) handle(ctx context.Context, downstreamIn io.Reader, downstre
 		if isUnexpected(err) {
 			errResp := proxy.OnError(fctx, req, true, err)
 			if errResp != nil {
-				proxy.writeResponse(downstream, req, errResp)
+				writeErr := proxy.writeResponse(downstream, req, errResp)
+				if proxy.NotifyDownstreamWritten != nil {
+					proxy.NotifyDownstreamWritten(fctx, downstream, req, writeErr)
+				}
 			}
 
 			return proxy.logInitialReadError(downstream, err)
@@ -207,6 +210,9 @@ func (proxy *proxy) processRequests(ctx filters.Context, remoteAddr string, req 
 
 		if resp != nil {
 			writeErr := proxy.writeResponse(downstream, req, resp)
+			if proxy.NotifyDownstreamWritten != nil {
+				proxy.NotifyDownstreamWritten(ctx, downstream, req, writeErr)
+			}
 			if writeErr != nil {
 				if isUnexpected(writeErr) {
 					return log.Errorf("Unable to write response to downstream: %v", writeErr)
@@ -252,7 +258,10 @@ func (proxy *proxy) processRequests(ctx filters.Context, remoteAddr string, req 
 			if isUnexpected(readErr) {
 				errResp := proxy.OnError(ctx, req, true, readErr)
 				if errResp != nil {
-					proxy.writeResponse(downstream, req, errResp)
+					writeErr := proxy.writeResponse(downstream, req, errResp)
+					if proxy.NotifyDownstreamWritten != nil {
+						proxy.NotifyDownstreamWritten(ctx, downstream, req, writeErr)
+					}
 				}
 				return log.Errorf("Unable to read next request from downstream: %v", readErr)
 			}
