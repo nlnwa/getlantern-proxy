@@ -49,6 +49,13 @@ type Proxy interface {
 	Serve(l net.Listener) error
 }
 
+// WriteResponseInvoker is called by WriteResponseInterceptorFunc to complete writing to downstream.
+type WriteResponseInvoker func(ctx filters.Context, downstream io.Writer, req *http.Request, resp *http.Response) error
+
+// WriteResponseInterceptorFunc intercepts the execution of writing response to downstream.
+// invoker is the handler to complete writing to downstream and it is the responsibility of the interceptor to call it.
+type WriteResponseInterceptorFunc func(ctx filters.Context, downstream io.Writer, req *http.Request, resp *http.Response, invoker WriteResponseInvoker) error
+
 // RequestAware is an interface for connections that are able to modify requests
 // before they're sent on the connection.
 type RequestAware interface {
@@ -107,8 +114,8 @@ type Opts struct {
 	// InitMITM is an optional function to initialize the MITM interceptor
 	InitMITM func() (MITMInterceptor, error)
 
-	// NotifyDownstreamWritten is an optional function which is called immediately after response is written downstream
-	NotifyDownstreamWritten func(filters.Context, net.Conn, *http.Request, error)
+	// Optional function to intercept downstream writing of response
+	WriteResponseInterceptor WriteResponseInterceptorFunc
 }
 
 type MITMInterceptor interface {

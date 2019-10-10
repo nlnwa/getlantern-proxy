@@ -184,7 +184,6 @@ func (proxy *proxy) proceedWithConnect(ctx filters.Context, req *http.Request, u
 		// Try to MITM the connection
 		downstreamMITM, upstreamMITM, mitming, err := proxy.mitmIC.MITM(ctx, downstream, upstream)
 		if err != nil {
-			fmt.Printf("MITM ERROR: %v, %v, %v, %v\n", downstreamMITM != nil, upstreamMITM != nil, mitming, err)
 			return log.Errorf("Unable to MITM connection: %v", err)
 		}
 		downstream = downstreamMITM

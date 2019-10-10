@@ -104,10 +104,7 @@ func (proxy *proxy) handle(ctx context.Context, downstreamIn io.Reader, downstre
 		if isUnexpected(err) {
 			errResp := proxy.OnError(fctx, req, true, err)
 			if errResp != nil {
-				writeErr := proxy.writeResponse(downstream, req, errResp)
-				if proxy.NotifyDownstreamWritten != nil {
-					proxy.NotifyDownstreamWritten(fctx, downstream, req, writeErr)
-				}
+				proxy.writeResponse(fctx, downstream, req, errResp)
 			}
 
 			return proxy.logInitialReadError(downstream, err)
@@ -209,10 +206,7 @@ func (proxy *proxy) processRequests(ctx filters.Context, remoteAddr string, req 
 		}
 
 		if resp != nil {
-			writeErr := proxy.writeResponse(downstream, req, resp)
-			if proxy.NotifyDownstreamWritten != nil {
-				proxy.NotifyDownstreamWritten(ctx, downstream, req, writeErr)
-			}
+			writeErr := proxy.writeResponse(ctx, downstream, req, resp)
 			if writeErr != nil {
 				if isUnexpected(writeErr) {
 					return log.Errorf("Unable to write response to downstream: %v", writeErr)
@@ -258,10 +252,7 @@ func (proxy *proxy) processRequests(ctx filters.Context, remoteAddr string, req 
 			if isUnexpected(readErr) {
 				errResp := proxy.OnError(ctx, req, true, readErr)
 				if errResp != nil {
-					writeErr := proxy.writeResponse(downstream, req, errResp)
-					if proxy.NotifyDownstreamWritten != nil {
-						proxy.NotifyDownstreamWritten(ctx, downstream, req, writeErr)
-					}
+					proxy.writeResponse(ctx, downstream, req, errResp)
 				}
 				return log.Errorf("Unable to read next request from downstream: %v", readErr)
 			}
@@ -306,7 +297,15 @@ func handleResponseAware(ctx context.Context, req *http.Request, resp *http.Resp
 	})
 }
 
-func (proxy *proxy) writeResponse(downstream io.Writer, req *http.Request, resp *http.Response) error {
+func (proxy *proxy) writeResponse(ctx filters.Context, downstream io.Writer, req *http.Request, resp *http.Response) error {
+	if proxy.WriteResponseInterceptor == nil {
+		return proxy.writeResponseInvoker(ctx, downstream, req, resp)
+	} else {
+		return proxy.WriteResponseInterceptor(ctx, downstream, req, resp, proxy.writeResponseInvoker)
+	}
+}
+
+func (proxy *proxy) writeResponseInvoker(ctx filters.Context, downstream io.Writer, req *http.Request, resp *http.Response) error {
 	if resp.Request == nil {
 		resp.Request = req
 	}
