@@ -18,6 +18,7 @@ require (
 	github.com/getlantern/preconn v0.0.0-20180328114929-0b5766010efe
 	github.com/getlantern/reconn v0.0.0-20161128113912-7053d017511c
 	github.com/getlantern/tlsdefaults v0.0.0-20171004213447-cf35cfd0b1b4
+	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/mitchellh/go-server-timing v1.0.0
 	github.com/stretchr/testify v1.5.1
 )

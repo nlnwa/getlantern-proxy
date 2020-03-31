@@ -229,6 +229,12 @@ func (proxy *proxy) proceedWithConnect(ctx filters.Context, req *http.Request, u
 		}
 	}
 
+	if downstream == nil {
+		return fmt.Errorf("downstream is nil")
+	}
+	if upstream == nil {
+		return fmt.Errorf("upstream is nil")
+	}
 	// Pipe data between the client and the proxy.
 	writeErr, readErr := netx.BidiCopy(upstream, downstream, bufOut, bufIn)
 	if isUnexpected(readErr) {
