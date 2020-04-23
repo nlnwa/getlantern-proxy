@@ -174,6 +174,10 @@ func (proxy *proxy) proceedWithConnect(ctx filters.Context, req *http.Request, u
 		}
 	}
 	defer func() {
+		if upstream == nil {
+			log.Tracef("Error closing upstream connection: upstream is nil")
+			return
+		}
 		if closeErr := upstream.Close(); closeErr != nil {
 			log.Tracef("Error closing upstream connection: %s", closeErr)
 		}
