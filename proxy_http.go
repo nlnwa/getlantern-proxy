@@ -3,11 +3,13 @@ package proxy
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"runtime/debug"
 	"strings"
 	"time"
 
@@ -34,6 +36,7 @@ func (proxy *proxy) Handle(ctx context.Context, downstreamIn io.Reader, downstre
 		if p != nil {
 			safeClose(downstream)
 			err = errors.New("Recovered from panic handling connection: %v", p)
+			fmt.Printf("Recovered from panic handling connection: %v\n StackTrace: %s\n", p, string(debug.Stack()))
 		}
 	}()
 
